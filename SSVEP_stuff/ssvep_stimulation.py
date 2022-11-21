@@ -55,7 +55,7 @@ class OnlineSSVEP:
     self.signal_len = signal_len
     self.eeg_s_rate = eeg_s_rate
     self.overlap = 0.2 # overlap (float): Time overlap between two consecutive data chunk
-    self._prediction_text = []
+    self._prediction_arrows = []
     self._prediction_ind = None
 
 
@@ -74,7 +74,7 @@ class OnlineSSVEP:
       self.freq_labels.append(visual.TextBox2(win=self.window, text=f'{freq} Hz', 
         pos=(pos[0]+0.1,pos[1]+0.1)))
       
-      self._prediction_text.append(visual.TextStim(win=self.window, pos=[0, 0], text=arrow,
+      self._prediction_arrows.append(visual.TextStim(win=self.window, pos=[0, 0], text=arrow,
                                                          color=(-1, -1, -1), height=.15,
                                                          colorSpace='rgb', bold=True))
 
@@ -113,6 +113,8 @@ class OnlineSSVEP:
       self.window.flip()
       for stim in self.targets:
         stim.draw()
+      if self._prediction_ind is not None:
+        self._prediction_arrows[self._predicition_ind].draw()
       for label in self.freq_labels:
           label.draw()
       self._analyze_data_CCA()
