@@ -1,6 +1,7 @@
 import time
 import numpy as np
 from psychopy import visual, event
+from threading import Lock
 from analysis import CCAAnalysis
 
 SCORE_TH = .1
@@ -22,13 +23,25 @@ class Stimulus:
     self._window = window
     self._fr_rate = n_frame
     self._fr_counter = n_frame
-    self._stim1 = visual.Circle(win=self._window, pos=position, size=size, radius=0.4, opacity=1)
+    pattern = np.ones((4, 4))
+    pattern[::2, ::2] *= -1
+    pattern[1::2, 1::2] *= -1
+    self._stim1 = visual.RadialStim(win=self._window, tex=pattern, pos=position,
+                                        size=size, radialCycles=1, texRes=256, opacity=1)
+    self._stim2 = visual.RadialStim(win=self._window, tex=pattern*-1, pos=position,
+                                    size=size, radialCycles=1, texRes=256, opacity=1)
+
+    self._toggle_flag = False
 
   def draw(self):
     """Draw stimulation"""
     if self._fr_counter == 0:
         self._fr_counter = self._fr_rate
-        self._stim1.draw()
+        if self._toggle_flag:
+          self._stim1.draw()
+        else:
+            self._stim2.draw()
+        self._toggle_flag = not self._toggle_flag
     self._fr_counter -= 1
 
 class OnlineSSVEP:
@@ -48,12 +61,14 @@ class OnlineSSVEP:
     self.target_arrows = ['\u2199', '\u2196', '\u2197', '\u2198']
     self.stim_size = (0.6 * self.window.size[1]/self.window.size[0], 0.6)
     self.fr_rates = [5, 6, 7, 8] # 12Hz, 10Hz, 8.5Hz, 7.5Hz.
-    self._freqs = [round(screen_refresh_rate / fr_no, 1) for fr_no in self.fr_rates]
+    self.fr_rates = [20, 20, 20, 20] # 12Hz, 10Hz, 8.5Hz, 7.5Hz.
+    self._freqs = [screen_refresh_rate / fr_no for fr_no in self.fr_rates]
     self.targets = []
     self.freq_labels = []
     self._data_buff= np.array([])
     self.signal_len = signal_len
     self.eeg_s_rate = eeg_s_rate
+    self.lock = Lock()
     self.overlap = 0.2 # overlap (float): Time overlap between two consecutive data chunk
     self._prediction_arrows = []
     self._prediction_ind = None
@@ -71,25 +86,25 @@ class OnlineSSVEP:
         n_frame=fr_no,
         position=pos
       ))
-      self.freq_labels.append(visual.TextBox2(win=self.window, text=f'{freq} Hz', 
+      self.freq_labels.append(visual.TextBox2(win=self.window, text=f'{round(freq,1)} Hz', 
         pos=(pos[0]+0.1,pos[1]+0.1)))
       
       self._prediction_arrows.append(visual.TextStim(win=self.window, pos=[0, 0], text=arrow,
                                                          color=(-1, -1, -1), height=.15,
                                                          colorSpace='rgb', bold=True))
 
-  
   def _analyze_data_CCA(self):
     if len(self._data_buff) > 0:
       if self._data_buff.shape[0] > self.signal_len * self.eeg_s_rate:
+        with self.lock:
           scores = self.cca.apply_cca(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
           self._data_buff = self._data_buff[:int(self.overlap * self.eeg_s_rate), :]
-          print(scores)
-          if not all(val < SCORE_TH for val in scores):
-              self._predicted_ind = np.argmax(scores)
-              print(self._predicted_ind)
-          else:
-              self._predicted_ind = None
+        print(scores)
+        if not all(val < SCORE_TH for val in scores):
+            self._prediction_ind = np.argmax(scores)
+            print(f'Predicted Frequency: {self._freqs[self._prediction_ind]}')
+        else:
+            self._prediction_ind = None
 
   def update_buffer(self, packet):
     """Update EEG buffer of the experiment
@@ -106,18 +121,15 @@ class OnlineSSVEP:
     
   def run_ssvep(self, duration: int):
     self._display_stim()
-    start_time = time.time()
 
-    print('Starting trial')
+    start_time = time.time()
     while time.time() - start_time < duration:
       self.window.flip()
       for stim in self.targets:
         stim.draw()
       if self._prediction_ind is not None:
-        self._prediction_arrows[self._predicition_ind].draw()
+        self._prediction_arrows[self._prediction_ind].draw()
       for label in self.freq_labels:
           label.draw()
       self._analyze_data_CCA()
-    
     self.window.close()
-    print('Done trial')
