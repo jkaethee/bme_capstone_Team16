@@ -46,22 +46,20 @@ class Stimulus:
 
 class OnlineSSVEP:
 
-  def __init__(self, screen_refresh_rate, signal_len, eeg_s_rate, analysis_type):
+  def __init__(self, screen_refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type):
     """
     Args:
         screen_refresh_rate (int): Refresh rate of your screen
-        frame_rates (list): List of number of frames in which each target is flickering (one number for each target)
-        positions (list): List of target positions in the screen
         signal_len (float): EEG signal length (in seconds) to be analysed
         eeg_s_rate (int): Sampling rate of EEG signal
+        fr_rates (list): List of number of frames in which each target is flickering (one number for each target)
         overlap (float): Time overlap between two consecutive data chunk
     """
     self.window = visual.Window([800,600], monitor="testMonitor", fullscr=True, allowGUI=True, screen=1, units='norm', color=[0.1,0.1,0.1])
     self.target_positions = [(-.6, -.6), (-.6, .6), (.6, .6), (.6, -.6)]
     self.target_arrows = ['\u2199', '\u2196', '\u2197', '\u2198']
     self.stim_size = (0.6 * self.window.size[1]/self.window.size[0], 0.6)
-    self.fr_rates = [5, 6, 7, 8] # 12Hz, 10Hz, 8.5Hz, 7.5Hz.
-    self.fr_rates = [20, 20, 20, 20] # 12Hz, 10Hz, 8.5Hz, 7.5Hz.
+    self.fr_rates = fr_rates
     self._freqs = [screen_refresh_rate / fr_no for fr_no in self.fr_rates]
     self.targets = []
     self.freq_labels = []
