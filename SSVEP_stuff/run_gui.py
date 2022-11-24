@@ -2,13 +2,14 @@ import PySimpleGUIQt as sg
 from explorepy.explore import Explore
 from explorepy.stream_processor import TOPICS
 from ssvep_stimulation import OnlineSSVEP
+import math
 
 device_name = 'Explore_84A1'
 refresh_rate = 60
-explore = Explore()
-explore.connect(device_name=device_name)
-explore.set_channels(channel_mask='11001111')
-explore.measure_imp()
+# explore = Explore()
+# explore.connect(device_name=device_name)
+# explore.set_channels(channel_mask='11001111')
+# explore.measure_imp()
 
 sg.theme('Reddit')
 # Everything inside the window
@@ -17,10 +18,10 @@ layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans S
             [sg.Text('How long should the simulation be (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='30')],
             [sg.Text('EEG signal length to be analyzed (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='3')],
             [sg.Text('EEG sampling rate (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='250')],
-            [sg.Text('Top left frame divisor ?', font=('MS Sans Serif', 11)), sg.InputText(default_text='5', key='top_left'), sg.Text('', key='-TL-')],
-            [sg.Text('Bottom left frame divisor ?', font=('MS Sans Serif', 11)), sg.InputText(default_text='6', key='bottom_left'), sg.Text('', key='-BL-')],
-            [sg.Text('Top right frame divisor ?', font=('MS Sans Serif', 11)), sg.InputText(default_text='7', key='top_right'), sg.Text('', key='-TR-')],
-            [sg.Text('Bottom right frame divisor ?', font=('MS Sans Serif', 11)), sg.InputText(default_text='8', key='bottom_right'), sg.Text('', key='-BR-')],
+            [sg.Text('Top left frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='12', key='top_left')],
+            [sg.Text('Bottom left frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='10', key='bottom_left')],
+            [sg.Text('Top right frame frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='8.5', key='top_right')],
+            [sg.Text('Bottom right frame frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='7.5', key='bottom_right')],
             [sg.Text('Classification Method', font=('MS Sans Serif', 11)), sg.Combo(['CCA'], default_value='CCA', key='analysis')],
             [sg.Button('Start'), sg.Button('Cancel')] ]
 
@@ -29,11 +30,7 @@ window = sg.Window('SSVEP simulation', layout, size=(800, 300), return_keyboard_
 # Event Loop to process "events" and get the "values" of the inputs
 while True:
     event, values = window.read()
-    window['-TL-'].update(f"{refresh_rate/int(values['top_left'])} Hz") if values['top_left'].isnumeric() and values['top_left'] != 0 else window['-TL-'].update("")
-    window['-BL-'].update(f"{refresh_rate/int(values['bottom_left'])} Hz") if values['bottom_left'].isnumeric() and values['bottom_left'] != 0 else window['-BL-'].update("")
-    window['-TR-'].update(f"{refresh_rate/int(values['top_right'])} Hz") if values['top_right'].isnumeric() and values['top_right'] != 0 else window['-TR-'].update("")
-    window['-BR-'].update(f"{refresh_rate/int(values['bottom_right'])} Hz") if values['bottom_right'].isnumeric() and values['bottom_right'] != 0 else window['-BR-'].update("")
-
+    
     if event == sg.WIN_CLOSED or event == 'Cancel': # if user closes window or clicks cancel
         break
     
@@ -42,14 +39,17 @@ while True:
         ssvep_duration = int(values[0])
         signal_len = int(values[1])
         eeg_s_rate = int(values[2])
-        fr_rates = [int(values['top_left']), int(values['bottom_left']), int(values['top_right']), int(values['bottom_right'])]
+        freq_keys = ['top_left', 'bottom_left', 'top_right', 'bottom_right']
+        fr_rates = []
+        for freq_key in freq_keys:
+            fr_rates.append(round(refresh_rate/float(values[freq_key])))
         analysis_type = values['analysis']
 
         experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type)
 
         # subscribe the experiment buffer to the EEG data stream
-        explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
-        explore.record_data(file_name='test', duration=ssvep_duration, file_type='csv', do_overwrite=True)
+        # explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
+        # explore.record_data(file_name='test', duration=ssvep_duration, file_type='csv', do_overwrite=True)
         experiment.run_ssvep(ssvep_duration)
 
 window.close()

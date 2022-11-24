@@ -56,8 +56,8 @@ class OnlineSSVEP:
         overlap (float): Time overlap between two consecutive data chunk
     """
     self.window = visual.Window([800,600], monitor="testMonitor", fullscr=True, allowGUI=True, screen=1, units='norm', color=[0.1,0.1,0.1])
-    self.target_positions = [(-.6, -.6), (-.6, .6), (.6, .6), (.6, -.6)]
-    self.target_arrows = ['\u2199', '\u2196', '\u2197', '\u2198']
+    self.target_positions = [(-.6, .6), (-.6, -.6),(.6, .6), (.6, -.6)]
+    self.target_arrows = ['\u2196', '\u2199', '\u2197', '\u2198']
     self.stim_size = (0.6 * self.window.size[1]/self.window.size[0], 0.6)
     self.fr_rates = fr_rates
     self._freqs = [screen_refresh_rate / fr_no for fr_no in self.fr_rates]
