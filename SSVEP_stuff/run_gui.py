@@ -17,7 +17,7 @@ layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans S
             [sg.Text('SSVEP simulation window', font=('MS Sans Serif', 15, 'bold'))],
             [sg.Text('How long should the simulation be (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='30')],
             [sg.Text('EEG signal length to be analyzed (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='3')],
-            [sg.Text('EEG sampling rate (Hz)?', font=('MS Sans Serif', 11)), sg.Combo(['250', '500', '1000'], default_text='250')],
+            [sg.Text('EEG sampling rate (Hz)?', font=('MS Sans Serif', 11)), sg.Combo(['250', '500', '1000'], default_value='250')],
             [sg.Text('Top left frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='12', key='top_left')],
             [sg.Text('Bottom left frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='10', key='bottom_left')],
             [sg.Text('Top right frame frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='8.5', key='top_right')],
