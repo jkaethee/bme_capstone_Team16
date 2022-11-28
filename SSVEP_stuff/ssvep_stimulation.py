@@ -1,4 +1,5 @@
 import time
+import serial
 import numpy as np
 from psychopy import visual, event
 from threading import Lock
@@ -71,6 +72,8 @@ class OnlineSSVEP:
     self._prediction_arrows = []
     self._prediction_ind = None
 
+    # Arduino setup 
+    self._arduino = serial.Serial(port='COM5', baudrate=115200, timeout=.1)
 
     if analysis_type == 'CCA':
       self.cca = CCAAnalysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
@@ -127,7 +130,15 @@ class OnlineSSVEP:
         stim.draw()
       if self._prediction_ind is not None:
         self._prediction_arrows[self._prediction_ind].draw()
+        print("Arduino return val: {}".format(self.write_read(self._prediction_ind)))
+        
       for label in self.freq_labels:
           label.draw()
       self._analyze_data_CCA()
     self.window.close()
+
+  def write_read(self, prediction_index):
+    self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino 
+    time.sleep(0.05)
+    data = self._arduino.readline()  # Reading value sent back from Arduino
+    return data
