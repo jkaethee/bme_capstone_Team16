@@ -32,7 +32,7 @@ void loop() {
   x = Serial.readString().toInt();
 
 
-  // digitalWrite(9,HIGH);
+  digitalWrite(9,HIGH);
 
   // TODO: add cases to light up specific LEDs 
   // when reading a prediction

@@ -19,6 +19,5 @@ def main():
         value = write_read(input_val)
         print(value)
 
-
 if __name__ == "__main__":
     main()

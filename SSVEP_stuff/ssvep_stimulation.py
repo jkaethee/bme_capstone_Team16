@@ -131,11 +131,14 @@ class OnlineSSVEP:
       if self._prediction_ind is not None:
         self._prediction_arrows[self._prediction_ind].draw()
         print("Arduino return val: {}".format(self.write_read(self._prediction_ind)))
+      # else:
+      #   print("Arduino return val: {}".format(self.write_read('0')))
         
       for label in self.freq_labels:
           label.draw()
       self._analyze_data_CCA()
     self.window.close()
+    self._arduino.close()
 
   def write_read(self, prediction_index):
     self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino 
