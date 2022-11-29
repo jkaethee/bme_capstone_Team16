@@ -96,6 +96,7 @@ class OnlineSSVEP:
       if self._data_buff.shape[0] > self.signal_len * self.eeg_s_rate:
         with self.lock:
           scores, fatigue = self.analysis.analyse(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
+          print('Fatigue score: ', fatigue)
           self._data_buff = self._data_buff[:int(self.overlap * self.eeg_s_rate), :]
         print(scores)
         if not all(val < SCORE_TH for val in scores):
