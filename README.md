@@ -11,3 +11,5 @@ This code repo will host files for SSVEP stimulation, EEG signal acquisiton, sig
 ## Installation
 1. Follow the explorepy installation guide: https://explorepy.readthedocs.io/en/latest/installation.html
 2. Clone the repo
+3. Run `python run_gui.py`
+
