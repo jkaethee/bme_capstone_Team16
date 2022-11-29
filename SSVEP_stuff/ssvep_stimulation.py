@@ -73,7 +73,7 @@ class OnlineSSVEP:
     self._prediction_ind = None
 
     # Arduino setup 
-    self._arduino = serial.Serial(port='COM5', baudrate=115200, timeout=.1)
+    self._arduino = serial.Serial(port='COM7', baudrate=115200, timeout=.1)
 
     if analysis_type == 'CCA':
       self.analysis = Analysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
@@ -131,18 +131,15 @@ class OnlineSSVEP:
         stim.draw()
       if self._prediction_ind is not None:
         self._prediction_arrows[self._prediction_ind].draw()
-        print("Arduino return val: {}".format(self.write_read(self._prediction_ind)))
-      # else:
-      #   print("Arduino return val: {}".format(self.write_read('0')))
+        self.write_read(str(self._prediction_ind+1))
         
       for label in self.freq_labels:
           label.draw()
       self._analyze_data_CCA()
+
     self.window.close()
+    self.write_read("End")
     self._arduino.close()
 
   def write_read(self, prediction_index):
-    self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino 
-    time.sleep(0.05)
-    data = self._arduino.readline()  # Reading value sent back from Arduino
-    return data
+    self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino
