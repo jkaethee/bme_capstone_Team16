@@ -2,7 +2,7 @@ import time
 import numpy as np
 from psychopy import visual, event
 from threading import Lock
-from analysis import CCAAnalysis
+from analysis import Analysis
 
 SCORE_TH = .1
 
@@ -73,7 +73,7 @@ class OnlineSSVEP:
 
 
     if analysis_type == 'CCA':
-      self.cca = CCAAnalysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
+      self.analysis = Analysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
 
   
   def _display_stim(self):
@@ -95,7 +95,7 @@ class OnlineSSVEP:
     if len(self._data_buff) > 0:
       if self._data_buff.shape[0] > self.signal_len * self.eeg_s_rate:
         with self.lock:
-          scores = self.cca.apply_cca(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
+          scores, fatigue = self.analysis.analyse(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
           self._data_buff = self._data_buff[:int(self.overlap * self.eeg_s_rate), :]
         print(scores)
         if not all(val < SCORE_TH for val in scores):
