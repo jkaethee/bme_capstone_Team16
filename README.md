@@ -7,3 +7,7 @@ commands.
 ## Description
 
 This code repo will host files for SSVEP stimulation, EEG signal acquisiton, signal filtering, and signal classification.
+
+## Installation
+1. Follow the explorepy installation guide: https://explorepy.readthedocs.io/en/latest/installation.html
+2. Clone the repo
