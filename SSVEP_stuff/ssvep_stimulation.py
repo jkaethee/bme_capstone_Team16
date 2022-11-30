@@ -4,9 +4,11 @@ import numpy as np
 from psychopy import visual, event
 from threading import Lock
 from analysis import Analysis
+import matplotlib.pyplot as plt
 
 SCORE_TH = .1
 fatigues = []
+fatigue_times = []
 
 #  https://github.com/Mentalab-hub/explorepy/blob/master/examples/ssvep_demo/ssvep.py
 class Stimulus:
@@ -48,7 +50,7 @@ class Stimulus:
 
 class OnlineSSVEP:
 
-  def __init__(self, screen_refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type):
+  def __init__(self, screen_refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, arduino_flag):
     """
     Args:
         screen_refresh_rate (int): Refresh rate of your screen
@@ -72,9 +74,11 @@ class OnlineSSVEP:
     self.overlap = 0.2 # overlap (float): Time overlap between two consecutive data chunk
     self._prediction_arrows = []
     self._prediction_ind = None
+    self.arduino_flag = arduino_flag
 
     # Arduino setup 
-    self._arduino = serial.Serial(port='COM7', baudrate=115200, timeout=.1)
+    if self.arduino_flag:
+      self._arduino = serial.Serial(port='COM7', baudrate=115200, timeout=.1)
 
     if analysis_type == 'CCA':
       self.analysis = Analysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
@@ -95,12 +99,13 @@ class OnlineSSVEP:
                                                          color=(-1, -1, -1), height=.15,
                                                          colorSpace='rgb', bold=True))
 
-  def _analyze_data_CCA(self):
+  def _analyze_data_CCA(self, start_time):
     if len(self._data_buff) > 0:
       if self._data_buff.shape[0] > self.signal_len * self.eeg_s_rate:
         with self.lock:
           scores, fatigue = self.analysis.analyse(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
           fatigues.append(fatigue)
+          fatigue_times.append(time.time() - start_time)
           print('Fatigue score: ', fatigue)
           self._data_buff = self._data_buff[:int(self.overlap * self.eeg_s_rate), :]
         print(scores)
@@ -133,15 +138,24 @@ class OnlineSSVEP:
         stim.draw()
       if self._prediction_ind is not None:
         self._prediction_arrows[self._prediction_ind].draw()
-        self.write_read(str(self._prediction_ind+1))
+        if self.arduino_flag:
+          self.write_read(str(self._prediction_ind+1))
         
       for label in self.freq_labels:
           label.draw()
-      self._analyze_data_CCA()
+      self._analyze_data_CCA(start_time)
 
     self.window.close()
-    self.write_read("End")
-    self._arduino.close()
+    if self.arduino_flag:
+      self.write_read("End")
+      self._arduino.close()
+    times = np.linspace(0, duration, len(fatigues))
+    plt.figure()
+    plt.title('Fatigue scores vs. Time')
+    plt.xlabel('Time')
+    plt.ylabel('Fatigue Score')
+    plt.plot(fatigue_times, fatigues)
+    plt.savefig('fatigue_plot')
 
   def write_read(self, prediction_index):
     self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino
