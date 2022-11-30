@@ -6,14 +6,16 @@ import math
 
 device_name = 'Explore_84A1'
 refresh_rate = 60
+arduino_flag = False
 explore = Explore()
 explore.connect(device_name=device_name)
 explore.set_channels(channel_mask='11001111')
-explore.measure_imp()
 
 sg.theme('Reddit')
 # Everything inside the window
 layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans Serif', 17, 'italics'))],
+            [sg.Button('Check Impedance')],
+            [sg.Button('Arduino Test', key='-Arduino-', button_color = ('white', 'red'))],
             [sg.Text('SSVEP simulation window', font=('MS Sans Serif', 15, 'bold'))],
             [sg.Text('How long should the simulation be (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='30')],
             [sg.Text('EEG signal length to be analyzed (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='3')],
@@ -33,6 +35,13 @@ while True:
     
     if event == sg.WIN_CLOSED or event == 'Cancel': # if user closes window or clicks cancel
         break
+
+    if event == 'Check Impedance':
+        explore.measure_imp()
+
+    if event == 'Arduino Test':
+        arduino_flag = True
+        window['-Arduino-'].update(button_color = ('white, green'))
     
     # If the user clicks Start or uses the 'Enter' button on their keyboard
     if event == 'Start' or event == 'special 16777220':
@@ -47,7 +56,7 @@ while True:
             fr_rates.append(round(refresh_rate/float(values[freq_key])))
         analysis_type = values['analysis']
 
-        experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type)
+        experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, arduino_flag)
 
         # subscribe the experiment buffer to the EEG data stream
         explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)

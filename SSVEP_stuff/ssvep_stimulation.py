@@ -5,6 +5,7 @@ from threading import Lock
 from analysis import Analysis
 
 SCORE_TH = .1
+fatigues = []
 
 #  https://github.com/Mentalab-hub/explorepy/blob/master/examples/ssvep_demo/ssvep.py
 class Stimulus:
@@ -96,6 +97,7 @@ class OnlineSSVEP:
       if self._data_buff.shape[0] > self.signal_len * self.eeg_s_rate:
         with self.lock:
           scores, fatigue = self.analysis.analyse(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
+          fatigues.append(fatigue)
           print('Fatigue score: ', fatigue)
           self._data_buff = self._data_buff[:int(self.overlap * self.eeg_s_rate), :]
         print(scores)
@@ -131,4 +133,7 @@ class OnlineSSVEP:
       for label in self.freq_labels:
           label.draw()
       self._analyze_data_CCA()
+    
+    print(fatigues)
+
     self.window.close()

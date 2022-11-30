@@ -57,7 +57,7 @@ class Analysis:
         alpha_bounds = 8, 12
         theta_bounds = 4, 8
 
-        freqs, psd = signal.welch(np.mean(eeg, axis=0), fs=self.s_rate, nperseg=self.win_len*self.s_rate)
+        freqs, psd = signal.welch(np.mean(eeg, axis=-1), fs=self.s_rate, nperseg=self.win_len*self.s_rate)
         beta_coeffs = psd[np.logical_and(freqs > beta_bounds[0], freqs < beta_bounds[1])]
         beta_power = np.sum(beta_coeffs)
 
