@@ -7,8 +7,6 @@ from analysis import Analysis
 import matplotlib.pyplot as plt
 
 SCORE_TH = .1
-fatigues = []
-fatigue_times = []
 
 #  https://github.com/Mentalab-hub/explorepy/blob/master/examples/ssvep_demo/ssvep.py
 class Stimulus:
@@ -74,6 +72,10 @@ class OnlineSSVEP:
     self.overlap = 0.2 # overlap (float): Time overlap between two consecutive data chunk
     self._prediction_arrows = []
     self._prediction_ind = None
+    self.predicted_freq = []
+    self.fatigues = []
+    self.fatigue_times = []
+
     self.arduino_flag = arduino_flag
 
     # Arduino setup 
@@ -104,14 +106,15 @@ class OnlineSSVEP:
       if self._data_buff.shape[0] > self.signal_len * self.eeg_s_rate:
         with self.lock:
           scores, fatigue = self.analysis.analyse(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
-          fatigues.append(fatigue)
-          fatigue_times.append(time.time() - start_time)
+          self.fatigues.append(fatigue)
+          self.fatigue_times.append(time.time() - start_time)
           print('Fatigue score: ', fatigue)
           self._data_buff = self._data_buff[:int(self.overlap * self.eeg_s_rate), :]
         print(scores)
         if not all(val < SCORE_TH for val in scores):
             self._prediction_ind = np.argmax(scores)
             print(f'Predicted Frequency: {self._freqs[self._prediction_ind]}')
+            self.predicted_freq.append(self._prediction_ind)
         else:
             self._prediction_ind = None
 
@@ -149,13 +152,20 @@ class OnlineSSVEP:
     if self.arduino_flag:
       self.write_read("End")
       self._arduino.close()
-    times = np.linspace(0, duration, len(fatigues))
+
     plt.figure()
     plt.title('Fatigue scores vs. Time')
     plt.xlabel('Time')
     plt.ylabel('Fatigue Score')
-    plt.plot(fatigue_times, fatigues)
+    plt.plot(self.fatigue_times, self.fatigues)
     plt.savefig('fatigue_plot')
+
+    plt.figure()
+    plt.title('Predicted Frequencies vs. Time')
+    plt.xlabel('Time')
+    plt.ylabel('Frequency')
+    plt.plot(self.fatigue_times, self.predicted_freq)
+    plt.savefig('predicted_freqs')
 
   def write_read(self, prediction_index):
     self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino
