@@ -5,6 +5,7 @@ from psychopy import visual, event
 from threading import Lock
 from analysis import Analysis
 import matplotlib.pyplot as plt
+import random
 
 SCORE_TH = .1
 
@@ -60,6 +61,7 @@ class OnlineSSVEP:
     self.window = visual.Window([800,600], monitor="testMonitor", fullscr=True, allowGUI=True, screen=1, units='norm', color=[0.1,0.1,0.1])
     self.target_positions = [(-.6, .6), (-.6, -.6),(.6, .6), (.6, -.6)]
     self.target_arrows = ['\u2196', '\u2199', '\u2197', '\u2198']
+    self.direction_labels = ['Top Left', 'Bottom Left', 'Top Right', 'Bottom Right']
     self.stim_size = (0.6 * self.window.size[1]/self.window.size[0], 0.6)
     self.fr_rates = fr_rates
     self._freqs = [screen_refresh_rate / fr_no for fr_no in self.fr_rates]
@@ -75,6 +77,7 @@ class OnlineSSVEP:
     self.overlap = 0.2 # overlap (float): Time overlap between two consecutive data chunk
     self._prediction_arrows = []
     self._prediction_ind = None
+    self.direction_cues = []
     self.arduino_flag = arduino_flag
 
     # Arduino setup 
@@ -86,7 +89,7 @@ class OnlineSSVEP:
 
   
   def _display_stim(self):
-    for fr_no, pos, freq, arrow in zip(self.fr_rates, self.target_positions, self._freqs, self.target_arrows):
+    for fr_no, pos, freq, arrow, cue in zip(self.fr_rates, self.target_positions, self._freqs, self.target_arrows, self.direction_labels):
       self.targets.append(Stimulus(
         window=self.window,
         size=self.stim_size,
@@ -97,6 +100,10 @@ class OnlineSSVEP:
         pos=(pos[0]+0.1,pos[1]+0.1)))
       
       self._prediction_arrows.append(visual.TextStim(win=self.window, pos=[0, 0], text=arrow,
+                                                         color=(-1, -1, -1), height=.15,
+                                                         colorSpace='rgb', bold=True))
+
+      self.direction_cues.append(visual.TextStim(win=self.window, pos=[0, 0], text=cue,
                                                          color=(-1, -1, -1), height=.15,
                                                          colorSpace='rgb', bold=True))
 
@@ -129,28 +136,44 @@ class OnlineSSVEP:
     else:
         self._data_buff = np.concatenate((self._data_buff, eeg.T), axis=0)
     
-  def run_ssvep(self, duration: int):
+  def run_ssvep(self,trials: int):
     self._display_stim()
+    iterations = np.zeros(4)
 
-    start_time = time.time()
-    while time.time() - start_time < duration:
+    while np.sum(iterations)/4!= trials:
       self.window.flip()
-      for stim in self.targets:
-        stim.draw()
-      if self._prediction_ind is not None:
-        self._prediction_arrows[self._prediction_ind].draw()
-        if self.arduino_flag:
-          self.write_read(str(self._prediction_ind+1))
-        
-      for label in self.freq_labels:
-          label.draw()
-      self._analyze_data_CCA(start_time)
 
+      # First, randomly assign the user 1 of 4 directions to look at (keep track of how many trials for each stimuli)
+      direction_idx = random.randint(0,3)
+      while iterations[direction_idx] == trials:
+        direction_idx = random.randint(0,3)
+
+      # Second, cue the user to look in a certain direction (give them 5 seconds to look at the prompt)
+      end_time = time.time() + 5
+      while time.time() < end_time:
+        self.window.flip()
+        self.direction_cues[direction_idx].draw()
+
+      # Third, flash all the stimuli for and record the user's prediction
+      start_time = time.time()
+      end_time = start_time + 3
+      while time.time() < end_time:
+        self.window.flip()
+        for stim in self.targets:
+          stim.draw() # Flash all the stimuli
+        for label in self.freq_labels:
+          label.draw()
+        
+        self._analyze_data_CCA(start_time)
+      
+      print('Latency: ', time.time() - start_time)
+      # print('Prediction: ', self.direction_cues[self._prediction_ind])
+      iterations[direction_idx] += 1
+    
     self.window.close()
     if self.arduino_flag:
       self.write_read("End")
       self._arduino.close()
-    #times = np.linspace(0, duration, len(self.fatigues))
     
     plt.figure()
     plt.title('Fatigue scores vs. Time')
