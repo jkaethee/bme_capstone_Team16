@@ -9,7 +9,6 @@ refresh_rate = 60
 arduino_flag = False
 explore = Explore()
 explore.connect(device_name=device_name)
-# explore.set_channels(channel_mask='11001111')
 
 sg.theme('Reddit')
 # Everything inside the window
