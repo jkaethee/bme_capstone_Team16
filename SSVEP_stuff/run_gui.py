@@ -9,7 +9,7 @@ refresh_rate = 60
 arduino_flag = False
 explore = Explore()
 explore.connect(device_name=device_name)
-explore.set_channels(channel_mask='11001111')
+# explore.set_channels(channel_mask='11001111')
 
 sg.theme('Reddit')
 # Everything inside the window
@@ -61,7 +61,7 @@ while True:
         for freq_key in freq_keys:
             fr_rates.append(round(refresh_rate/float(values[freq_key])))
         analysis_type = values['analysis']
-        experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, arduino_flag)
+        experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, values['eeg_name'], arduino_flag)
 
         # subscribe the experiment buffer to the EEG data stream
         explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)

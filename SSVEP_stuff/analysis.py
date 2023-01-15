@@ -3,7 +3,6 @@ from sklearn.cross_decomposition import CCA
 from scipy import signal
 
 # index --- label on electrode --- actual position
-# 0         GND                    GND
 # 1         FP1                    FP1
 # 2         FP2                    FP2
 # 3         T3                     PO3
@@ -12,8 +11,8 @@ from scipy import signal
 # 6         O2                     O2
 # 7         FPz                    Oz
 # 8         Pz                     POz
-CLASSIFICATION_CHANNELS = [3, 4, 5, 6, 7, 8]
-FATIGUE_CHANNELS = [1, 2]
+CLASSIFICATION_CHANNELS = [2, 3, 4, 5, 6, 7]
+FATIGUE_CHANNELS = [0, 1]
 
 class Analysis:
     """
@@ -85,9 +84,11 @@ class Analysis:
 
         
     def analyse(self, eeg):
-        raw_cca_scores = self.apply_cca(eeg[:, CLASSIFICATION_CHANNELS])
-        fatigue = self.measure_fatigue(eeg[:, FATIGUE_CHANNELS])
-
+        try:
+            raw_cca_scores = self.apply_cca(eeg[:, CLASSIFICATION_CHANNELS])
+            fatigue = self.measure_fatigue(eeg[:, FATIGUE_CHANNELS])
+        except Exception as e:
+            print(e)
         return raw_cca_scores, fatigue
 
 

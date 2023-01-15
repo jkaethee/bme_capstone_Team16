@@ -7,8 +7,6 @@ from analysis import Analysis
 import matplotlib.pyplot as plt
 
 SCORE_TH = .1
-fatigues = []
-fatigue_times = []
 
 #  https://github.com/Mentalab-hub/explorepy/blob/master/examples/ssvep_demo/ssvep.py
 class Stimulus:
@@ -50,7 +48,7 @@ class Stimulus:
 
 class OnlineSSVEP:
 
-  def __init__(self, screen_refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, arduino_flag):
+  def __init__(self, screen_refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, file_name, arduino_flag):
     """
     Args:
         screen_refresh_rate (int): Refresh rate of your screen
@@ -70,6 +68,9 @@ class OnlineSSVEP:
     self._data_buff= np.array([])
     self.signal_len = signal_len
     self.eeg_s_rate = eeg_s_rate
+    self.fatigues = []
+    self.fatigue_times = []
+    self.file_name=file_name
     self.lock = Lock()
     self.overlap = 0.2 # overlap (float): Time overlap between two consecutive data chunk
     self._prediction_arrows = []
@@ -104,8 +105,8 @@ class OnlineSSVEP:
       if self._data_buff.shape[0] > self.signal_len * self.eeg_s_rate:
         with self.lock:
           scores, fatigue = self.analysis.analyse(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
-          fatigues.append(fatigue)
-          fatigue_times.append(time.time() - start_time)
+          self.fatigues.append(fatigue)
+          self.fatigue_times.append(time.time() - start_time)
           print('Fatigue score: ', fatigue)
           self._data_buff = self._data_buff[:int(self.overlap * self.eeg_s_rate), :]
         print(scores)
@@ -149,13 +150,18 @@ class OnlineSSVEP:
     if self.arduino_flag:
       self.write_read("End")
       self._arduino.close()
-    times = np.linspace(0, duration, len(fatigues))
+    #times = np.linspace(0, duration, len(self.fatigues))
+    
     plt.figure()
     plt.title('Fatigue scores vs. Time')
     plt.xlabel('Time')
     plt.ylabel('Fatigue Score')
-    plt.plot(fatigue_times, fatigues)
-    plt.savefig('fatigue_plot')
+    plt.ylim(0,11)
+    plt.plot(self.fatigue_times, self.fatigues)
+    plt.savefig(f'{self.file_name}_fatigue_scores.png')
+
+    #save fatigues
+    np.save(f'{self.file_name}_fatigues.npy', np.array([self.fatigue_times, self.fatigues]))
 
   def write_read(self, prediction_index):
     self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino
