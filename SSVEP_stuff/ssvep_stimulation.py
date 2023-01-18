@@ -140,6 +140,8 @@ class OnlineSSVEP:
     self._display_stim()
     iterations = np.zeros(4)
 
+    acc_list = []
+    start_time = time.time()
     while np.sum(iterations)/4!= trials:
       self.window.flip()
 
@@ -149,15 +151,15 @@ class OnlineSSVEP:
         direction_idx = random.randint(0,3)
 
       # Second, cue the user to look in a certain direction (give them 5 seconds to look at the prompt)
-      end_time = time.time() + 5
+      end_time = time.time() + 2
       while time.time() < end_time:
         self.window.flip()
         self.direction_cues[direction_idx].draw()
 
       # Third, flash all the stimuli for and record the user's prediction
-      start_time = time.time()
-      end_time = start_time + 3
-      while time.time() < end_time:
+      self._prediction_ind = None
+      self._data_buff = np.array([])
+      while self._prediction_ind is None:
         self.window.flip()
         for stim in self.targets:
           stim.draw() # Flash all the stimuli
@@ -166,20 +168,34 @@ class OnlineSSVEP:
         
         self._analyze_data_CCA(start_time)
       
-      print('Latency: ', time.time() - start_time)
-      # print('Prediction: ', self.direction_cues[self._prediction_ind])
+      # print(f'Latency:  {time.time() - start_time} sec')
+      # print(f'Actual: {self.direction_labels[direction_idx]} vs. Prediction: {self.direction_labels[self._prediction_ind]}')
+      # print('------------------------------------------------------------------------------------------')
+      
       iterations[direction_idx] += 1
-    
+
+      ##
+      acc_list.append(int(direction_idx != self._prediction_ind))
+      ##
+
     self.window.close()
     if self.arduino_flag:
       self.write_read("End")
       self._arduino.close()
+
+    plt.figure()
+    plt.title(f'Predictions from {trials*4} trials')
+    # plt.plot(self.fatigues,label="Fatigue Score")
+    x_axis = np.arange(len(acc_list))
+    plt.plot(x_axis, acc_list)
+    plt.yticks([0, 1])
+    plt.legend()
+    plt.savefig("test.png")
     
     plt.figure()
     plt.title('Fatigue scores vs. Time')
     plt.xlabel('Time')
     plt.ylabel('Fatigue Score')
-    plt.ylim(0,11)
     plt.plot(self.fatigue_times, self.fatigues)
     plt.savefig(f'{self.file_name}_fatigue_scores.png')
 

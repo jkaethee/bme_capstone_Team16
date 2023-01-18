@@ -89,7 +89,7 @@ class Analysis:
             fatigue = self.measure_fatigue(eeg[:, FATIGUE_CHANNELS])
         except Exception as e:
             print(e)
-        return raw_cca_scores, fatigue
+        return raw_cca_scores, fatigue/(np.max(fatigue))
 
 
 if __name__ == '__main__':
