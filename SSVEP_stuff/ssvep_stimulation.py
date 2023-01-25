@@ -158,7 +158,7 @@ class OnlineSSVEP:
 
       # Third, flash all the stimuli for and record the user's prediction
       self._prediction_ind = None
-      self._data_buff = np.array([])
+      # self._data_buff = np.array([])
       while self._prediction_ind is None:
         self.window.flip()
         for stim in self.targets:
