@@ -2,7 +2,7 @@ import PySimpleGUIQt as sg
 from explorepy.explore import Explore
 from explorepy.stream_processor import TOPICS
 from ssvep_stimulation import OnlineSSVEP
-import math
+import sys
 
 device_name = 'Explore_84A1'
 refresh_rate = 60
@@ -16,6 +16,7 @@ layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans S
             [sg.Button('Check Impedance', button_color = ('white', '#52bf9b'))],
             [sg.Button('Arduino Test?', key='-Arduino-', button_color = ('white', 'red'))],
             [sg.Text('SSVEP simulation window', font=('MS Sans Serif', 15, 'bold'))],
+            [sg.Text('Trial File Name?', font=('MS Sans Serif', 11)), sg.InputText(default_text='Trial_0', key='file_name')],
             [sg.Text('How many trials for each stimuli?', font=('MS Sans Serif', 11)), sg.InputText(default_text='1')],
             [sg.Text('EEG signal length to be analyzed (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='2')],
             [sg.Text('EEG sampling rate (Hz)?', font=('MS Sans Serif', 11)), sg.Combo(['250', '500', '1000'], default_value='250')],
@@ -24,7 +25,6 @@ layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans S
             [sg.Text('Top right frame frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='8.5', key='top_right')],
             [sg.Text('Bottom right frame frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='7.5', key='bottom_right')],
             [sg.Text('Classification Method', font=('MS Sans Serif', 11)), sg.Combo(['CCA'], default_value='CCA', key='analysis')],
-            [sg.Text('EEG File Name?', font=('MS Sans Serif', 11)), sg.InputText(default_text='example', key='eeg_name')],
             [sg.Button('Start'), sg.Button('Cancel')] ]
 
 # Create the Window
@@ -60,11 +60,13 @@ while True:
         for freq_key in freq_keys:
             fr_rates.append(round(refresh_rate/float(values[freq_key])))
         analysis_type = values['analysis']
-        experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, values['eeg_name'], arduino_flag)
+        experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, values['file_name'], arduino_flag)
 
         # subscribe the experiment buffer to the EEG data stream
         explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
-        explore.record_data(file_name=values['eeg_name'], file_type='csv', do_overwrite=True)
+        explore.record_data(file_name=values['file_name'], file_type='csv', do_overwrite=True)
         experiment.run_ssvep(ssvep_trials)
 
 window.close()
+explore.stop_recording()
+sys.exit(1)

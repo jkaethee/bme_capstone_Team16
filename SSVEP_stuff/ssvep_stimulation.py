@@ -6,6 +6,7 @@ from threading import Lock
 from analysis import Analysis
 import matplotlib.pyplot as plt
 import random
+import bluetooth 
 
 SCORE_TH = .1
 
@@ -58,7 +59,7 @@ class OnlineSSVEP:
         fr_rates (list): List of number of frames in which each target is flickering (one number for each target)
         overlap (float): Time overlap between two consecutive data chunk
     """
-    self.window = visual.Window([800,600], monitor="testMonitor", fullscr=True, allowGUI=True, screen=1, units='norm', color=[0.1,0.1,0.1])
+    self.window = visual.Window([1920, 1080], monitor="testMonitor", fullscr=True, allowGUI=True, units='norm', color=[0.1,0.1,0.1])
     self.target_positions = [(-.6, .6), (-.6, -.6),(.6, .6), (.6, -.6)]
     self.target_arrows = ['\u2196', '\u2199', '\u2197', '\u2198']
     self.direction_labels = ['Top Left', 'Bottom Left', 'Top Right', 'Bottom Right']
@@ -72,7 +73,7 @@ class OnlineSSVEP:
     self.eeg_s_rate = eeg_s_rate
     self.fatigues = []
     self.fatigue_times = []
-    self.file_name=file_name
+    self.file_name = file_name
     self.lock = Lock()
     self.overlap = 0.2 # overlap (float): Time overlap between two consecutive data chunk
     self._prediction_arrows = []
@@ -82,7 +83,7 @@ class OnlineSSVEP:
 
     # Arduino setup 
     if self.arduino_flag:
-      self._arduino = serial.Serial(port='COM7', baudrate=115200, timeout=.1)
+      self._arduino = serial.Serial(port='COM9', baudrate=9600, timeout=.1)
 
     if analysis_type == 'CCA':
       self.analysis = Analysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
@@ -140,9 +141,12 @@ class OnlineSSVEP:
     self._display_stim()
     iterations = np.zeros(4)
 
+    # self.bluetooth_signal(1)
+
     acc_list = []
     start_time = time.time()
     while np.sum(iterations)/4!= trials:
+      
       self.window.flip()
 
       # First, randomly assign the user 1 of 4 directions to look at (keep track of how many trials for each stimuli)
@@ -158,7 +162,9 @@ class OnlineSSVEP:
 
       # Third, flash all the stimuli for and record the user's prediction
       self._prediction_ind = None
-      # self._data_buff = np.array([])
+      self._data_buff = np.array([])
+
+      latency_start = time.time()
       while self._prediction_ind is None:
         self.window.flip()
         for stim in self.targets:
@@ -168,10 +174,11 @@ class OnlineSSVEP:
         
         self._analyze_data_CCA(start_time)
       
-      # print(f'Latency:  {time.time() - start_time} sec')
-      # print(f'Actual: {self.direction_labels[direction_idx]} vs. Prediction: {self.direction_labels[self._prediction_ind]}')
-      # print('------------------------------------------------------------------------------------------')
+      print(f'Latency:  {time.time() - latency_start} sec')
+      print(f'Actual: {self.direction_labels[direction_idx]} vs. Prediction: {self.direction_labels[self._prediction_ind]}')
+      print('------------------------------------------------------------------------------------------')
       
+
       iterations[direction_idx] += 1
 
       ##
@@ -180,27 +187,42 @@ class OnlineSSVEP:
 
     self.window.close()
     if self.arduino_flag:
-      self.write_read("End")
+      # self.write_read("End")
       self._arduino.close()
 
     plt.figure()
-    plt.title(f'Predictions from {trials*4} trials')
+    plt.suptitle(f'Predictions from {trials*4} trials')
     # plt.plot(self.fatigues,label="Fatigue Score")
     x_axis = np.arange(len(acc_list))
     plt.plot(x_axis, acc_list)
-    plt.yticks([0, 1])
+    plt.yticks([0, 1], ["Correct", "False"])
+    plt.ylabel('Prediction')
+    plt.locator_params(axis="x", integer=True, tight=True)
+    plt.xlabel('Trials')
     plt.legend()
-    plt.savefig("test.png")
+    plt.savefig(f"{self.file_name}_prediction_graph.png")
     
     plt.figure()
-    plt.title('Fatigue scores vs. Time')
+    plt.suptitle('Fatigue scores vs. Time')
+    plt.title(f'Median: {round(np.median(self.fatigues), 3)}, Mean: {round(np.mean(self.fatigues), 3)}, Integral: {round(np.sum(self.fatigues), 3)}')
     plt.xlabel('Time')
     plt.ylabel('Fatigue Score')
     plt.plot(self.fatigue_times, self.fatigues)
     plt.savefig(f'{self.file_name}_fatigue_scores.png')
 
     #save fatigues
-    np.save(f'{self.file_name}_fatigues.npy', np.array([self.fatigue_times, self.fatigues]))
+    np.save(f'{self.file_name}_fatigue_scores.npy', np.array([self.fatigue_times, self.fatigues]))
+
 
   def write_read(self, prediction_index):
     self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino
+
+  # def bluetooth_signal(self, prediction):
+    
+    
+  #   sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+  #   sock.connect((host, port))
+  #   s = serial.Serial("COM9",9600,timeout = 2)
+  #   s.write(bytes("1",'utf-8'))
+  #   nearby_devices = bluetooth.discover_devices(duration=4,lookup_names=True,
+  #                                                         flush_cache=True, lookup_class=False)
