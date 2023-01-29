@@ -1,6 +1,7 @@
 import time
 import serial
 import numpy as np
+import pandas as pd
 from psychopy import visual, event
 from threading import Lock
 from analysis import Analysis
@@ -143,7 +144,9 @@ class OnlineSSVEP:
 
     # self.bluetooth_signal(1)
 
-    acc_list = []
+    compare_list = []
+    ground_truth = []
+    ground_truth_times = []
     start_time = time.time()
     while np.sum(iterations)/4!= trials:
       
@@ -154,7 +157,7 @@ class OnlineSSVEP:
       while iterations[direction_idx] == trials:
         direction_idx = random.randint(0,3)
 
-      # Second, cue the user to look in a certain direction (give them 5 seconds to look at the prompt)
+      # Second, cue the user to look in a certain direction (give them X seconds to look at the prompt)
       end_time = time.time() + 2
       while time.time() < end_time:
         self.window.flip()
@@ -165,6 +168,8 @@ class OnlineSSVEP:
       self._data_buff = np.array([])
 
       latency_start = time.time()
+      # Timestamps for each ground_truth
+      ground_truth_times.append(time.time()-start_time)
       while self._prediction_ind is None:
         self.window.flip()
         for stim in self.targets:
@@ -178,12 +183,13 @@ class OnlineSSVEP:
       print(f'Actual: {self.direction_labels[direction_idx]} vs. Prediction: {self.direction_labels[self._prediction_ind]}')
       print('------------------------------------------------------------------------------------------')
       
-
       iterations[direction_idx] += 1
 
-      ##
-      acc_list.append(int(direction_idx != self._prediction_ind))
-      ##
+      # Ground_truth for number of trials
+      ground_truth.append(self._freqs[direction_idx])
+
+      ## Append if prediction is True (0) or False (1)
+      compare_list.append(int(direction_idx != self._prediction_ind))
 
     self.window.close()
     if self.arduino_flag:
@@ -192,9 +198,8 @@ class OnlineSSVEP:
 
     plt.figure()
     plt.suptitle(f'Predictions from {trials*4} trials')
-    # plt.plot(self.fatigues,label="Fatigue Score")
-    x_axis = np.arange(len(acc_list))
-    plt.plot(x_axis, acc_list)
+    x_axis = np.arange(len(compare_list))
+    plt.plot(x_axis, compare_list)
     plt.yticks([0, 1], ["Correct", "False"])
     plt.ylabel('Prediction')
     plt.locator_params(axis="x", integer=True, tight=True)
@@ -205,14 +210,18 @@ class OnlineSSVEP:
     plt.figure()
     plt.suptitle('Fatigue scores vs. Time')
     plt.title(f'Median: {round(np.median(self.fatigues), 3)}, Mean: {round(np.mean(self.fatigues), 3)}, Integral: {round(np.sum(self.fatigues), 3)}')
-    plt.xlabel('Time')
+    plt.xlabel('Trials')
     plt.ylabel('Fatigue Score')
-    plt.plot(self.fatigue_times, self.fatigues)
+    plt.plot(x_axis, self.fatigues)
     plt.savefig(f'{self.file_name}_fatigue_scores.png')
 
-    #save fatigues
-    np.save(f'{self.file_name}_fatigue_scores.npy', np.array([self.fatigue_times, self.fatigues]))
-
+    # Save start of trials
+    df = {
+      'trial_start': ground_truth_times,
+      'ground_truth': ground_truth,
+      'fatigue_score': self.fatigues
+    }
+    pd.DataFrame(df).to_csv(f'{self.file_name}_trial_info.csv')
 
   def write_read(self, prediction_index):
     self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino
