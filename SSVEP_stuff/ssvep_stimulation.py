@@ -1,4 +1,5 @@
 import time
+import PySimpleGUIQt as sg
 import serial
 import numpy as np
 import pandas as pd
@@ -7,7 +8,24 @@ from threading import Lock
 from analysis import Analysis
 import matplotlib.pyplot as plt
 import random
-import bluetooth 
+
+def open_likert_window(title: str):
+    fatigue_rating = 0
+    likert_layout = [[sg.Text("How much fatigue are you having now?")], 
+                    [sg.Button(f"{num}", key=f"Rating_{num}",) for num in range(1,11)],
+                    [sg.Text("1 = No Fatigue | 10 = Worst Possible Fatigue")]]
+    # Record user response
+    likert_window = sg.Window(f"{title} Fatigue Likert Scale", likert_layout, size=(300, 100))
+    while True:
+        event, values = likert_window.read()
+        if event == "Exit" or event == sg.WIN_CLOSED:
+            break
+        if "Rating" in event:
+            fatigue_rating = int(likert_window[event].get_text())
+            break
+    
+    likert_window.close()
+    return fatigue_rating
 
 SCORE_TH = .1
 
@@ -138,7 +156,7 @@ class OnlineSSVEP:
     else:
         self._data_buff = np.concatenate((self._data_buff, eeg.T), axis=0)
     
-  def run_ssvep(self,trials: int):
+  def run_ssvep(self,trials: int, start_rating: int):
     self._display_stim()
     iterations = np.zeros(4)
 
@@ -148,6 +166,7 @@ class OnlineSSVEP:
     ground_truth = []
     ground_truth_times = []
     start_time = time.time()
+    num_of_wrong = 0
     while np.sum(iterations)/4!= trials:
       
       self.window.flip()
@@ -190,14 +209,21 @@ class OnlineSSVEP:
 
       ## Append if prediction is True (0) or False (1)
       compare_list.append(int(direction_idx != self._prediction_ind))
+      if direction_idx != self._prediction_ind:
+        num_of_wrong += 1
 
     self.window.close()
+
+    # Record fatigue measurement at the end
+    end_rating = open_likert_window("Post-SSVEP")
+
     if self.arduino_flag:
       # self.write_read("End")
       self._arduino.close()
 
     plt.figure()
     plt.suptitle(f'Predictions from {trials*4} trials')
+    plt.title(f'Number of incorrect predictions: {num_of_wrong}')
     x_axis = np.arange(len(compare_list))
     plt.plot(x_axis, compare_list)
     plt.yticks([0, 1], ["Correct", "False"])
@@ -210,6 +236,7 @@ class OnlineSSVEP:
     plt.figure()
     plt.suptitle('Fatigue scores vs. Time')
     plt.title(f'Median: {round(np.median(self.fatigues), 3)}, Mean: {round(np.mean(self.fatigues), 3)}, Integral: {round(np.sum(self.fatigues), 3)}')
+    plt.figtext(0.5, 0, s=f"Self-reported Fatigue: Start -> {start_rating} | End -> {end_rating}", horizontalalignment = 'center')
     plt.xlabel('Trials')
     plt.ylabel('Fatigue Score')
     plt.plot(x_axis, self.fatigues)

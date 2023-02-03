@@ -1,7 +1,7 @@
 import PySimpleGUIQt as sg
 from explorepy.explore import Explore
 from explorepy.stream_processor import TOPICS
-from ssvep_stimulation import OnlineSSVEP
+from ssvep_stimulation import OnlineSSVEP, open_likert_window
 import sys
 
 device_name = 'Explore_84A1'
@@ -9,8 +9,9 @@ refresh_rate = 60
 arduino_flag = False
 explore = Explore()
 explore.connect(device_name=device_name)
-
 sg.theme('Reddit')
+
+
 # Everything inside the window
 layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans Serif', 17, 'italics'))],
             [sg.Button('Check Impedance', button_color = ('white', '#52bf9b'))],
@@ -50,6 +51,12 @@ while True:
     
     # If the user clicks Start or uses the 'Enter' button on their keyboard
     if event == 'Start' or event == 'special 16777220':
+
+        # Check user fatigue levels prior to starting
+        start_rating = open_likert_window("Pre-SSVEP")
+        if start_rating == 0:
+            break
+
         ssvep_trials = int(values[0])
         signal_len = int(values[1])
         eeg_s_rate = int(values[2])
@@ -65,8 +72,9 @@ while True:
         # subscribe the experiment buffer to the EEG data stream
         explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
         explore.record_data(file_name=values['file_name'], file_type='csv', do_overwrite=True)
-        experiment.run_ssvep(ssvep_trials)
+        experiment.run_ssvep(ssvep_trials, start_rating)
 
 window.close()
 explore.stop_recording()
 sys.exit(1)
+
