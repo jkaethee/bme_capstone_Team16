@@ -3,6 +3,7 @@ from explorepy.explore import Explore
 from explorepy.stream_processor import TOPICS
 from ssvep_stimulation import OnlineSSVEP, open_likert_window
 import sys
+import time
 
 device_name = 'Explore_84A1'
 refresh_rate = 60
@@ -72,9 +73,10 @@ while True:
         # subscribe the experiment buffer to the EEG data stream
         explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
         explore.record_data(file_name=values['file_name'], file_type='csv', do_overwrite=True)
-        experiment.run_ssvep(ssvep_trials, start_rating)
+        start_time = time.time()
+        experiment.run_ssvep(ssvep_trials, start_rating, start_time)
+        explore.stop_recording()
 
 window.close()
-explore.stop_recording()
 sys.exit(1)
 

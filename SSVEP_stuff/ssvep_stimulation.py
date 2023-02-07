@@ -156,7 +156,7 @@ class OnlineSSVEP:
     else:
         self._data_buff = np.concatenate((self._data_buff, eeg.T), axis=0)
     
-  def run_ssvep(self,trials: int, start_rating: int):
+  def run_ssvep(self,trials: int, start_rating: int, start_time: int):
     self._display_stim()
     iterations = np.zeros(4)
 
@@ -164,8 +164,9 @@ class OnlineSSVEP:
 
     compare_list = []
     ground_truth = []
+    actual_preds = []
     ground_truth_times = []
-    start_time = time.time()
+
     num_of_wrong = 0
     while np.sum(iterations)/4!= trials:
       
@@ -204,8 +205,11 @@ class OnlineSSVEP:
       
       iterations[direction_idx] += 1
 
-      # Ground_truth for number of trials
+      # Ground_truth for each trial
       ground_truth.append(self._freqs[direction_idx])
+
+      # Actual prediction for each trial
+      actual_preds.append(self._freqs[self._prediction_ind])
 
       ## Append if prediction is True (0) or False (1)
       compare_list.append(int(direction_idx != self._prediction_ind))
@@ -246,6 +250,7 @@ class OnlineSSVEP:
     df = {
       'trial_start': ground_truth_times,
       'ground_truth': ground_truth,
+      'actual_pred': actual_preds,
       'fatigue_score': self.fatigues
     }
     pd.DataFrame(df).to_csv(f'{self.file_name}_trial_info.csv')
