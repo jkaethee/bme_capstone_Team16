@@ -2,6 +2,18 @@ import numpy as np
 from sklearn.cross_decomposition import CCA
 from scipy import signal
 
+# index --- label on electrode --- actual position
+# 1         FP1                    FP1
+# 2         FP2                    FP2
+# 3         T3                     PO3
+# 4         T4                     PO4
+# 5         O1                     O1
+# 6         O2                     O2
+# 7         FPz                    Oz
+# 8         Pz                     POz
+CLASSIFICATION_CHANNELS = [2, 3, 4, 5, 6, 7]
+FATIGUE_CHANNELS = [0, 1]
+
 class Analysis:
     """
     Canonical Correlation Analysis for SSVEP paradigm and fatigue estimation
@@ -57,7 +69,7 @@ class Analysis:
         alpha_bounds = 8, 12
         theta_bounds = 4, 8
 
-        freqs, psd = signal.welch(eeg.flatten(), fs=self.s_rate, nperseg=4*self.s_rate)
+        freqs, psd = signal.welch(np.mean(eeg, axis=-1), fs=self.s_rate, nperseg=self.win_len*self.s_rate)
         beta_coeffs = psd[np.logical_and(freqs > beta_bounds[0], freqs < beta_bounds[1])]
         beta_power = np.sum(beta_coeffs)
 
@@ -72,9 +84,11 @@ class Analysis:
 
         
     def analyse(self, eeg):
-        raw_cca_scores = self.apply_cca(eeg)
-        fatigue = self.measure_fatigue(eeg)
-
+        try:
+            raw_cca_scores = self.apply_cca(eeg[:, CLASSIFICATION_CHANNELS])
+            fatigue = self.measure_fatigue(eeg[:, FATIGUE_CHANNELS])
+        except Exception as e:
+            print(e)
         return raw_cca_scores, fatigue
 
 

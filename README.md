@@ -11,3 +11,16 @@ This code repo will host files for SSVEP stimulation, EEG signal acquisiton, sig
 ## Installation
 1. Follow the explorepy installation guide: https://explorepy.readthedocs.io/en/latest/installation.html
 2. Clone the repo
+3. Run `python run_gui.py`
+
+## Electrode Placement and Mapping
+| **Label on Electrode** | **Actual Position** | **Channel #**  |
+|:-------------:|:-------------:|:-----:|
+| FP1    | FP1  | 1 |
+| FP2    | FP2  | 2 |
+| T3     | PO3 | 3 |
+| T4     | PO4 | 4 |
+| O1     | O1  | 5 |
+| O2     | O2  | 6 |
+| FPz    | Oz  | 7 |
+| Pz     | POz | 8 |
