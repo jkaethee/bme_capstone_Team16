@@ -1,7 +1,7 @@
 import PySimpleGUIQt as sg
 from explorepy.explore import Explore
 from explorepy.stream_processor import TOPICS
-from ssvep_stimulation import OnlineSSVEP, open_likert_window
+from ssvep_stimulation import OnlineSSVEP, open_likert_window, sanity_check
 import sys
 import time
 
@@ -9,12 +9,13 @@ device_name = 'Explore_84A1'
 refresh_rate = 60
 arduino_flag = False
 explore = Explore()
-explore.connect(device_name=device_name)
+# explore.connect(device_name=device_name)
 sg.theme('Reddit')
 
 
 # Everything inside the window
 layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans Serif', 17, 'italics'))],
+            [sg.Button('Sanity Check', button_color = ('white', '#52bf9b'))],
             [sg.Button('Check Impedance', button_color = ('white', '#52bf9b'))],
             [sg.Button('Arduino Test?', key='-Arduino-', button_color = ('white', 'red'))],
             [sg.Text('SSVEP simulation window', font=('MS Sans Serif', 15, 'bold'))],
@@ -37,6 +38,9 @@ while True:
     
     if event == sg.WIN_CLOSED or event == 'Cancel': # if user closes window or clicks cancel
         break
+
+    if event == 'Sanity Check':
+        sanity_check(explore)
 
     if event == 'Check Impedance':
         explore.measure_imp()
