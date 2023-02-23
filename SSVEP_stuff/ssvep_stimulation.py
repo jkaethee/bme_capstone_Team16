@@ -8,8 +8,17 @@ from threading import Lock
 from analysis import Analysis
 import matplotlib.pyplot as plt
 import random
+import sys
+import os
+import scipy as sp
+import mne
+from scipy.fft import fft, rfft, ifft, fftfreq, irfft
+from scipy import signal 
 
 def open_likert_window(title: str):
+    '''
+    Window to record user's rating of fatigue before and after experiments
+    '''
     fatigue_rating = 0
     likert_layout = [[sg.Text("How much fatigue are you having now?")], 
                     [sg.Button(f"{num}", key=f"Rating_{num}",) for num in range(1,11)],
@@ -27,8 +36,110 @@ def open_likert_window(title: str):
     likert_window.close()
     return fatigue_rating
 
-SCORE_TH = .1
+def butter_highpass(cutoff, fs, order=5):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+    return b, a
 
+def butter_highpass_filter(data, cutoff, fs, order=5):
+    b, a = butter_highpass(cutoff, fs, order=order)
+    y = signal.filtfilt(b, a, data)
+    return y
+
+def plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES):
+  x = data['TimeStamp'].apply(lambda x: x-data['TimeStamp'].iloc[0])
+
+  fig, axes = plt.subplots(8,3, figsize=(20, 25))
+
+  fig.tight_layout(pad=5.0)
+  filtered_y = np.empty((len(x), 8))
+  for i in range(1,9):
+    filtered_y[:,i-1] = butter_highpass_filter(data.iloc[:,i], cutoff=1, fs=SAMPLE_RATE, order=5)
+
+    N = x.shape[0]
+    xf = fftfreq(N, 1 / SAMPLE_RATE)
+    yf = np.abs(fft(filtered_y[:,i-1]))
+
+    axes[i-1, 0].set_title(f'filtered {EEG_CHANNEL_NAMES[i-1]} channel')
+    axes[i-1, 0].plot(x, filtered_y[:, i-1])
+    axes[i-1, 0].set_xlim(0, 5)
+
+
+    axes[i-1, 1].set_title(f'filtered {EEG_CHANNEL_NAMES[i-1]} FFT channel')
+    axes[i-1, 1].plot(xf, yf)
+    axes[i-1, 1].set_xlim(0, 15)
+
+
+    axes[i-1, 2].set_title(f'filtered {EEG_CHANNEL_NAMES[i-1]} Spectrogram channel')
+    axes[i-1, 2].specgram(filtered_y[:,i-1], Fs=256)
+    axes[i-1, 2].set_ylim(0,30)
+
+def sanity_check(explore):
+  '''
+  Run sanity checking code prior to experiments
+  explore (explorepy.explore.Explore): explorepy device
+  '''
+  EEG_CHANNEL_NAMES = ['TimeStamps', 'Fp1', 'Fp2', 'PO3', 'PO4', 'O1', 'O2', 'OZ', 'POZ']
+  SAMPLE_RATE = 256
+  EEG_FILE_PATH = 'sanity_check_eeg'
+
+  window = visual.Window([1920, 1080], monitor="testMonitor", fullscr=True, allowGUI=True, units='norm', color=[0.1,0.1,0.1])
+  text_position = (0,0)
+  text_label = ['Keep eyes open and blink when prompted', 'Keep eyes closed for 30 seconds']
+  blink_counter = np.linspace(1,5, num=5)
+  eyes_closed_counter = np.linspace(1,30, num=30)
+  sanity_time = 30
+  
+  sanity_1 = []
+  sanity_2 = []
+
+  # Create displays for blinks every 5 seconds
+  for count in blink_counter:
+    text = ''
+    if count != 5:
+      text = f'{text_label[0]}: {round(count)}'
+    else:
+      text = 'BLINK'
+
+    sanity_1.append(visual.TextStim(win=window, text=text, pos=text_position, 
+                    color=(-1, -1, -1), height=.20, colorSpace='rgb', bold=True))
+  
+  # Create display for eyes closed for 30 seconds
+  for count in eyes_closed_counter:
+    sanity_2.append(visual.TextStim(win=window, text=f'{text_label[1]}: {round(count)} seconds', pos=text_position, 
+                  color=(-1, -1, -1), height=.20, colorSpace='rgb', bold=True))
+  
+
+  end_time = time.time() + sanity_time
+
+  # Display the prompts for 30 seconds of periodic blinking
+  explore.record_data(file_name=EEG_FILE_PATH, file_type='csv', do_overwrite=True)
+  while time.time() < end_time:
+    for label in sanity_1:
+      # Hold the label for 1 second
+      end = time.time() + 1
+      while time.time() < end:
+        label.draw()
+        window.flip()
+  
+  end_time = time.time() + sanity_time
+  # Display the prompt for 30 seconds eyes closed
+  while time.time() < end_time:
+    for label in sanity_2:
+      # Hold the label for 1 second
+      end = time.time() + 1
+      while time.time() < end:
+        label.draw()
+        window.flip()
+  
+  window.close()
+  explore.stop_recording()
+
+  data = pd.read_csv(EEG_FILE_PATH+'.csv')
+  plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES)
+
+SCORE_TH = .1
 #  https://github.com/Mentalab-hub/explorepy/blob/master/examples/ssvep_demo/ssvep.py
 class Stimulus:
   """
