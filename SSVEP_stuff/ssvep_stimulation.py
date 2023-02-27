@@ -46,9 +46,9 @@ def butter_highpass_filter(data, cutoff, fs, order=5):
 def plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES):
   x = data['TimeStamp'].apply(lambda x: x-data['TimeStamp'].iloc[0])
 
-  fig, axes = plt.subplots(8,3, figsize=(20, 25))
+  fig, axes = plt.subplots(8,3)
 
-  fig.tight_layout(pad=5.0)
+  fig.tight_layout()
   filtered_y = np.empty((len(x), 8))
   for i in range(1,9):
     filtered_y[:,i-1] = butter_highpass_filter(data.iloc[:,i], cutoff=1, fs=SAMPLE_RATE, order=5)
@@ -70,6 +70,9 @@ def plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES):
     axes[i-1, 2].set_title(f'filtered {EEG_CHANNEL_NAMES[i-1]} Spectrogram channel')
     axes[i-1, 2].specgram(filtered_y[:,i-1], Fs=256)
     axes[i-1, 2].set_ylim(0,30)
+  
+  plt.title('Sanity Checking Results')
+  plt.show()
 
 def sanity_check(explore):
   '''
@@ -85,7 +88,7 @@ def sanity_check(explore):
   text_label = ['Keep eyes open and blink when prompted', 'Keep eyes closed for 30 seconds']
   blink_counter = np.arange(0,6,1)
   eyes_closed_counter = np.linspace(1,30, num=30)
-  sanity_time = 30
+  sanity_time = 10
   
   sanity_1 = []
   sanity_2 = []
@@ -110,7 +113,7 @@ def sanity_check(explore):
   end_time = time.time() + sanity_time
 
   # Display the prompts for 30 seconds of periodic blinking
-  # explore.record_data(file_name=EEG_FILE_PATH, file_type='csv', do_overwrite=True)
+  explore.record_data(file_name=EEG_FILE_PATH, file_type='csv', do_overwrite=True)
   while time.time() < end_time:
     for label in sanity_1:
       # Hold the label for 1 second
@@ -130,9 +133,9 @@ def sanity_check(explore):
         window.flip()
   
   window.close()
-  # explore.stop_recording()
+  explore.stop_recording()
 
-  data = pd.read_csv(EEG_FILE_PATH+'.csv')
+  data = pd.read_csv(EEG_FILE_PATH+'_ExG.csv')
   plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES)
 
 SCORE_TH = .1
@@ -185,6 +188,10 @@ class OnlineSSVEP:
         fr_rates (list): List of number of frames in which each target is flickering (one number for each target)
         overlap (float): Time overlap between two consecutive data chunk
     """
+    # Top left = Forward
+    # Top Right = Stop
+    # Bottom left = Right
+    # Bottom right = Left
     self.window = visual.Window([1920, 1080], monitor="testMonitor", fullscr=True, allowGUI=True, units='norm', color=[0.1,0.1,0.1])
     self.target_positions = [(-.6, .6), (-.6, -.6),(.6, .6), (.6, -.6)]
     self.target_arrows = ['\u2196', '\u2199', '\u2197', '\u2198']
@@ -209,7 +216,7 @@ class OnlineSSVEP:
 
     # Arduino setup 
     if self.arduino_flag:
-      self._arduino = serial.Serial(port='COM9', baudrate=9600, timeout=.1)
+      self._arduino = serial.Serial(port='COM7', baudrate=9600, timeout=.1)
 
     if analysis_type == 'CCA':
       self.analysis = Analysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)

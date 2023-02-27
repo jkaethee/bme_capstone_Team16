@@ -9,7 +9,7 @@ device_name = 'Explore_84A1'
 refresh_rate = 60
 arduino_flag = False
 explore = Explore()
-# explore.connect(device_name=device_name)
+explore.connect(device_name=device_name)
 sg.theme('Reddit')
 
 
