@@ -8,10 +8,6 @@ from threading import Lock
 from analysis import Analysis
 import matplotlib.pyplot as plt
 import random
-import sys
-import os
-import scipy as sp
-import mne
 from scipy.fft import fft, rfft, ifft, fftfreq, irfft
 from scipy import signal 
 
@@ -87,7 +83,7 @@ def sanity_check(explore):
   window = visual.Window([1920, 1080], monitor="testMonitor", fullscr=True, allowGUI=True, units='norm', color=[0.1,0.1,0.1])
   text_position = (0,0)
   text_label = ['Keep eyes open and blink when prompted', 'Keep eyes closed for 30 seconds']
-  blink_counter = np.linspace(1,5, num=5)
+  blink_counter = np.arange(0,6,1)
   eyes_closed_counter = np.linspace(1,30, num=30)
   sanity_time = 30
   
@@ -95,9 +91,9 @@ def sanity_check(explore):
   sanity_2 = []
 
   # Create displays for blinks every 5 seconds
-  for count in blink_counter:
+  for count in reversed(blink_counter):
     text = ''
-    if count != 5:
+    if count != 0:
       text = f'{text_label[0]}: {round(count)}'
     else:
       text = 'BLINK'
@@ -114,7 +110,7 @@ def sanity_check(explore):
   end_time = time.time() + sanity_time
 
   # Display the prompts for 30 seconds of periodic blinking
-  explore.record_data(file_name=EEG_FILE_PATH, file_type='csv', do_overwrite=True)
+  # explore.record_data(file_name=EEG_FILE_PATH, file_type='csv', do_overwrite=True)
   while time.time() < end_time:
     for label in sanity_1:
       # Hold the label for 1 second
@@ -134,7 +130,7 @@ def sanity_check(explore):
         window.flip()
   
   window.close()
-  explore.stop_recording()
+  # explore.stop_recording()
 
   data = pd.read_csv(EEG_FILE_PATH+'.csv')
   plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES)
