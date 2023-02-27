@@ -322,6 +322,8 @@ class OnlineSSVEP:
       # Actual prediction for each trial
       actual_preds.append(self._freqs[self._prediction_ind])
 
+      self.write_read(str(self._prediction_ind+1))
+
       ## Append if prediction is True (0) or False (1)
       compare_list.append(int(direction_idx != self._prediction_ind))
       if direction_idx != self._prediction_ind:
@@ -333,7 +335,7 @@ class OnlineSSVEP:
     end_rating = open_likert_window("Post-SSVEP")
 
     if self.arduino_flag:
-      # self.write_read("End")
+      self.write_read('q')
       self._arduino.close()
 
     plt.figure()
