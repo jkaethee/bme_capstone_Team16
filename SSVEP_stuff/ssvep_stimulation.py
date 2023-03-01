@@ -377,13 +377,14 @@ class OnlineSSVEP:
 class CarDrive(OnlineSSVEP):
   def __init__(self, screen_refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, arduino_flag):
     self.window = visual.Window([1920, 1080], monitor="testMonitor", fullscr=True, allowGUI=True, units='norm', color=[0.1,0.1,0.1])
-    self.target_positions = [(0, .6), (-.6, 0),(.6, 0), (0, -.6)]
+    # self.target_positions = [(0, .6), (-.6, 0),(.6, 0), (0, -.6)]
+    self.target_positions = [(-.6, .6), (-.6, -.6),(.6, .6), (.6, -.6)]
     self.target_arrows = ['\u2196', '\u2199', '\u2197', '\u2198']
     self.direction_labels = ['Top Left', 'Bottom Left', 'Top Right', 'Bottom Right']
     self.stim_size = (0.6 * self.window.size[1]/self.window.size[0], 0.6)
     self.fr_rates = fr_rates
     self._freqs = [screen_refresh_rate / fr_no for fr_no in self.fr_rates]
-    self.directions = ['Forward', 'Right', 'Left', 'Stop']
+    self.directions = ['Forward', 'Left', 'Right', 'Stop']
     self.targets = []
     self.freq_labels = []
     self._data_buff= np.array([])
@@ -406,15 +407,18 @@ class CarDrive(OnlineSSVEP):
     if analysis_type == 'CCA':
       self.analysis = Analysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
 
+  def write_read(self, prediction_index):
+    self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino
+
   def _display_stim(self):
-    for fr_no, pos, direction, arrow, cue in zip(self.fr_rates, self.target_positions, self.directions, self.target_arrows, self.direction_labels):
+    for fr_no, pos, direction, label, arrow, cue in zip(self.fr_rates, self.target_positions, self.directions, self._freqs, self.target_arrows, self.direction_labels):
       self.targets.append(Stimulus(
         window=self.window,
         size=self.stim_size,
         n_frame=fr_no,
         position=pos
       ))
-      self.freq_labels.append(visual.TextBox2(win=self.window, text=f'{direction}', 
+      self.freq_labels.append(visual.TextBox2(win=self.window, text=f'{label} Hz -> {direction}', 
         pos=(pos[0]+0.1,pos[1]+0.1)))
       
       self._prediction_arrows.append(visual.TextStim(win=self.window, pos=[0, 0], text=arrow,
@@ -440,5 +444,14 @@ class CarDrive(OnlineSSVEP):
           label.draw()
         
         OnlineSSVEP._analyze_data_CCA(self, start_time)
+      
+      if self.arduino_flag:
+        print(f'Prediction: {self.directions[self._prediction_ind]}')
+        self.write_read(str(self._prediction_ind+1))
+        self._prediction_ind = None
+
+    if self.arduino_flag:
+      self.write_read('q')
+      self._arduino.close()
 
     self.window.close()

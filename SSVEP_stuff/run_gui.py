@@ -71,62 +71,66 @@ while True:
 
     if events == 'trials':
         window_trial = sg.Window('Data Collection', trial_layout, size=(800, 300), return_keyboard_events=True)
+        while True:
+            trial_events, trial_values = window_trial.read()
 
-        trial_events, trial_values = window_trial.read()
+            if trial_events == sg.WIN_CLOSED or trial_events == 'Cancel': # if user closes window or clicks cancel
+                window_trial.close()
+                break
+            
+            # If the user clicks Start or uses the 'Enter' button on their keyboard
+            if trial_events == 'Start' or trial_events == 'special 16777220':
 
-        if trial_events == sg.WIN_CLOSED or trial_events == 'Cancel': # if user closes window or clicks cancel
-            window_trial.close()
-        
-        # If the user clicks Start or uses the 'Enter' button on their keyboard
-        if trial_events == 'Start' or trial_events == 'special 16777220':
+                # Check user fatigue levels prior to starting
+                start_rating = open_likert_window("Pre-SSVEP")
 
-            # Check user fatigue levels prior to starting
-            start_rating = open_likert_window("Pre-SSVEP")
+                ssvep_trials = int(trial_values[0])
+                signal_len = int(trial_values[1])
+                eeg_s_rate = int(trial_values[2])
+                explore.set_sampling_rate(sampling_rate=eeg_s_rate)
 
-            ssvep_trials = int(trial_values[0])
-            signal_len = int(trial_values[1])
-            eeg_s_rate = int(trial_values[2])
-            explore.set_sampling_rate(sampling_rate=eeg_s_rate)
+                freq_keys = ['top_left', 'bottom_left', 'top_right', 'bottom_right']
+                fr_rates = []
+                for freq_key in freq_keys:
+                    fr_rates.append(round(refresh_rate/float(trial_values[freq_key])))
+                analysis_type = trial_values['analysis']
+                experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, trial_values['file_name'], arduino_flag)
 
-            freq_keys = ['top_left', 'bottom_left', 'top_right', 'bottom_right']
-            fr_rates = []
-            for freq_key in freq_keys:
-                fr_rates.append(round(refresh_rate/float(trial_values[freq_key])))
-            analysis_type = trial_values['analysis']
-            experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, trial_values['file_name'], arduino_flag)
-
-            # subscribe the experiment buffer to the EEG data stream
-            explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
-            explore.record_data(file_name=trial_values['file_name'], file_type='csv', do_overwrite=True)
-            start_time = time.time()
-            experiment.run_ssvep(ssvep_trials, start_rating, start_time)
-            explore.stop_recording()
+                # subscribe the experiment buffer to the EEG data stream
+                explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
+                explore.record_data(file_name=trial_values['file_name'], file_type='csv', do_overwrite=True)
+                start_time = time.time()
+                experiment.run_ssvep(ssvep_trials, start_rating, start_time)
+                explore.stop_recording()
     
     if events == 'car':
         window_car = sg.Window('Data Collection', car_layout, size=(800, 300), return_keyboard_events=True)
-        car_events, car_values = window_car.read()
+        while True:
+            car_events, car_values = window_car.read()
 
-        if car_events == sg.WIN_CLOSED or car_events == 'Cancel': # if user closes window or clicks cancel
-            window_car.close()
+            if car_events == sg.WIN_CLOSED or car_events == 'Cancel': # if user closes window or clicks cancel
+                window_car.close()
+                break
 
-        # If the user clicks Start or uses the 'Enter' button on their keyboard
-        if car_events == 'Start' or car_events == 'special 16777220':
-            length = int(car_values[0])
-            signal_len = int(car_values[1])
-            eeg_s_rate = int(car_values[2])
-            explore.set_sampling_rate(sampling_rate=eeg_s_rate)
+            # If the user clicks Start or uses the 'Enter' button on their keyboard
+            if car_events == 'Start' or car_events == 'special 16777220':
+                print(car_values)
+                length = int(car_values[0])
+                signal_len = int(car_values[1])
+                eeg_s_rate = int(car_values[2])
+                explore.set_sampling_rate(sampling_rate=eeg_s_rate)
 
-            freq_keys = ['top_left', 'bottom_left', 'top_right', 'bottom_right']
-            fr_rates = []
-            for freq_key in freq_keys:
-                fr_rates.append(round(refresh_rate/float(car_values[freq_key])))
-            analysis_type = car_values['analysis']
-            experiment = CarDrive(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, arduino_flag)
+                freq_keys = ['top_left', 'bottom_left', 'top_right', 'bottom_right']
+                fr_rates = []
+                for freq_key in freq_keys:
+                    fr_rates.append(round(refresh_rate/float(car_values[freq_key])))
+                analysis_type = car_values['analysis']
+                experiment = CarDrive(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, arduino_flag)
 
-            # subscribe the experiment buffer to the EEG data stream
-            explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
-            start_time = time.time()
-            experiment.drive_car(length, start_time)
+                # subscribe the experiment buffer to the EEG data stream
+                explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
+                start_time = time.time()
+                experiment.drive_car(length, start_time)
 
 window.close()
 sys.exit(1)
