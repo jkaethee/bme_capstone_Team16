@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from psychopy import visual, event
 from threading import Lock
-from analysis import Analysis
+from analysis import CCAAnalysis, CNNAnalysis
 import matplotlib.pyplot as plt
 import random
 from scipy.fft import fft, rfft, ifft, fftfreq, irfft
@@ -188,10 +188,7 @@ class OnlineSSVEP:
         fr_rates (list): List of number of frames in which each target is flickering (one number for each target)
         overlap (float): Time overlap between two consecutive data chunk
     """
-    # Top left = Forward
-    # Top Right = left
-    # Bottom left = right
-    # Bottom right = stop
+
     self.window = visual.Window([1920, 1080], monitor="testMonitor", fullscr=True, allowGUI=True, units='norm', color=[0.1,0.1,0.1])
     self.target_positions = [(-.6, .6), (-.6, -.6),(.6, .6), (.6, -.6)]
     self.target_arrows = ['\u2196', '\u2199', '\u2197', '\u2198']
@@ -218,8 +215,13 @@ class OnlineSSVEP:
     if self.arduino_flag:
       self._arduino = serial.Serial(port='COM7', baudrate=9600, timeout=.1)
 
+    
+    # Analysis Type
     if analysis_type == 'CCA':
-      self.analysis = Analysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
+      self.analysis = CCAAnalysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
+    
+    elif analysis_type == 'CNN':
+      self.analysis = CNNAnalysis(path="models/model_3.h5", freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate)
 
   
   def _display_stim(self):
@@ -245,7 +247,9 @@ class OnlineSSVEP:
     if len(self._data_buff) > 0:
       if self._data_buff.shape[0] > self.signal_len * self.eeg_s_rate:
         with self.lock:
+          print('before break')
           scores, fatigue = self.analysis.analyse(self._data_buff[:self.signal_len * self.eeg_s_rate, :])
+          print('scores: ', scores)
           self.fatigues.append(fatigue)
           self.fatigue_times.append(time.time() - start_time)
           print('Fatigue score: ', fatigue)
@@ -405,7 +409,7 @@ class CarDrive(OnlineSSVEP):
       self._arduino = serial.Serial(port='COM7', baudrate=9600, timeout=.1)
 
     if analysis_type == 'CCA':
-      self.analysis = Analysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
+      self.analysis = CCAAnalysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
 
   def write_read(self, prediction_index):
     self._arduino.write(bytes(prediction_index, 'utf-8'))  # Writing to Arduino

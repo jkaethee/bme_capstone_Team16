@@ -31,7 +31,7 @@ trial_layout = [[sg.Text('SSVEP simulation window', font=('MS Sans Serif', 15, '
             [sg.Text('Bottom left frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='10', key='bottom_left')],
             [sg.Text('Top right frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='8.5', key='top_right')],
             [sg.Text('Bottom right frequency (Hz)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='7.5', key='bottom_right')],
-            [sg.Text('Classification Method', font=('MS Sans Serif', 11)), sg.Combo(['CCA'], default_value='CCA', key='analysis')],
+            [sg.Text('Classification Method', font=('MS Sans Serif', 11)), sg.Combo(['CCA', 'CNN'], default_value='CCA', key='analysis')],
             [sg.Button('Start'), sg.Button('Cancel')] ]
 
 car_layout = [[sg.Text('Car Navigation Window', font=('MS Sans Serif', 15, 'bold'))],
@@ -94,9 +94,11 @@ while True:
                 for freq_key in freq_keys:
                     fr_rates.append(round(refresh_rate/float(trial_values[freq_key])))
                 analysis_type = trial_values['analysis']
+                print('type:', analysis_type)
                 experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, trial_values['file_name'], arduino_flag)
+                # break
 
-                # subscribe the experiment buffer to the EEG data stream
+                # # subscribe the experiment buffer to the EEG data stream
                 explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
                 explore.record_data(file_name=trial_values['file_name'], file_type='csv', do_overwrite=True)
                 start_time = time.time()
@@ -104,7 +106,7 @@ while True:
                 explore.stop_recording()
     
     if events == 'car':
-        window_car = sg.Window('Data Collection', car_layout, size=(800, 300), return_keyboard_events=True)
+        window_car = sg.Window('Car Navigation', car_layout, size=(800, 300), return_keyboard_events=True)
         while True:
             car_events, car_values = window_car.read()
 
