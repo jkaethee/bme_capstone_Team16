@@ -17,7 +17,17 @@ CLASSIFICATION_CHANNELS = [2, 3, 4, 5, 6, 7]
 FATIGUE_CHANNELS = [0, 1]
 
 class CNNAnalysis:
+    """
+    Convolutional Neural Network for SSVEP paradigm and fatigue estimation
+    """
     def __init__(self, path, freqs, win_len, s_rate, nyq=125.0,lower=4,upper=40):
+        """
+        Args:
+            path (str): Local path to saved model
+            freqs (list): List of target frequencies
+            win_len (float): Window length
+            s_rate (int): Sampling rate of EEG signal
+        """
         self.freqs = freqs
         self.win_len = win_len
         self.s_rate = s_rate
@@ -27,11 +37,7 @@ class CNNAnalysis:
         self.upper = upper
         normal_cutoffs = [self.lower/nyq, self.upper/nyq]
         self.filter_vals = signal.butter(4, normal_cutoffs,btype="band",analog=False)
-
-        # print(self.model.output)
-        # print(self.model(np.random.rand(1,8,72,1)))
-        # exit()
-
+    
     def measure_fatigue(self, eeg):
         """
         estimate cognitive fatigue on window using bandpower ratio
@@ -56,39 +62,23 @@ class CNNAnalysis:
         return (theta_power + alpha_power) / beta_power
 
     def analyse(self,eeg):
-        print('before pred')
         pred = self.apply_CNN(eeg)
-        print('after pred')
         fatigue = self.measure_fatigue(eeg[:, FATIGUE_CHANNELS])
-        print('after fatigue')
         return pred, fatigue
 
     def apply_CNN(self,eeg,nyq=125.0):
-
         eeg = np.transpose(eeg)
         assert len(eeg.shape) == 2
         assert eeg.shape[0] < eeg.shape[1]
         
         comp_feats = []
         for channel in eeg:
-            # plt.figure()
-            # plt.plot(
-            #     np.linspace(0,2,500),
-            #     channel
-            # )
-            # plt.savefig("pre_filtered.png")
             filtered = signal.filtfilt(
                 self.filter_vals[0],
                 self.filter_vals[1],
                 channel
             )
-            # plt.figure()
-            # plt.plot(
-            #     np.linspace(0,2,500),
-            #     filtered
-            # )
-            # plt.savefig("post_filtered.png")
-            # exit()
+
             temp_fft = np.fft.fft(filtered,853) / len(channel)
             real = np.real(temp_fft)[self.lower:self.upper]
             imag = np.imag(temp_fft)[self.lower:self.upper]
@@ -96,7 +86,6 @@ class CNNAnalysis:
                 np.concatenate([real,imag],axis=0)
             )
         model_input = np.expand_dims(np.array(comp_feats),axis=2)
-        # model_input = model_input.reshape(1,model_input.shape[0],model_input.shape[1],1)
         model_input = np.expand_dims(model_input,axis=0)
 
         return list(self.model(model_input)[0])
@@ -173,22 +162,10 @@ class CCAAnalysis:
     def analyse(self, eeg):
         raw_cca_scores = self.apply_cca(eeg[:, CLASSIFICATION_CHANNELS])
         fatigue = self.measure_fatigue(eeg[:, FATIGUE_CHANNELS])
-        # try:
-        #     raw_cca_scores = self.apply_cca(eeg[:, CLASSIFICATION_CHANNELS])
-        #     fatigue = self.measure_fatigue(eeg[:, FATIGUE_CHANNELS])
-        # except Exception as e:
-        #     print(e)
 
         return raw_cca_scores, fatigue
 
 if __name__ == '__main__':
-
-    ### AVERY'S TESTING ###
-    # cnn_analysis = CNNAnalysis("models/test_model.h5")
-    # cnn_analysis.analyze(np.random.rand(500,8))
-    # exit()
-    ### END ###
-
     freqs = [7, 10, 15, 12]
     t_len = 2
     s_rate = 250
@@ -197,8 +174,5 @@ if __name__ == '__main__':
     test_sig = np.sin(2 * np.pi * 10 * t_vec) + 0.05 * np.random.rand(len(t_vec))
 
     cca_analysis = CCAAnalysis(freqs=freqs, win_len=t_len, s_rate=s_rate, n_harmonics=2)
-    # r = cca_analysis.analyse(np.array(test_sig)[:, ])
     r, f = cca_analysis.analyse(np.random.rand(500,8))
-    print(f'type: {type(r)}')
-    print(r)
 

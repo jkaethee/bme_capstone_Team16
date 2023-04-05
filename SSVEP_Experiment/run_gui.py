@@ -7,13 +7,13 @@ import time
 
 device_name = 'Explore_84A1'
 refresh_rate = 60
-arduino_flag = False
+arduino_flag = False # Set this value to true if integrating with an Arduino system
 explore = Explore()
 explore.connect(device_name=device_name)
 sg.theme('Reddit')
 
 
-# Everything inside the window
+# The main home page of the application
 layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans Serif', 17, 'italics'))],
             [sg.Button('Sanity Check', button_color = ('white', '#52bf9b'))],
             [sg.Button('Check Impedance', button_color = ('white', '#52bf9b'))],
@@ -22,6 +22,7 @@ layout = [  [sg.Text(f'Mentalab Explore Device: {device_name}', font=('MS Sans S
             [sg.Button('Data Collection', key='trials', button_color = ('white', '#9462a8'), font=('MS Sans Serif', 15, 'bold'))],
             [sg.Button('Car Navigation', key='car', button_color = ('white', '#9462a8'), font=('MS Sans Serif', 15, 'bold'))]]
 
+# The data collection page for SSVEP experiments
 trial_layout = [[sg.Text('SSVEP simulation window', font=('MS Sans Serif', 15, 'bold'))],
             [sg.Text('Trial File Name?', font=('MS Sans Serif', 11)), sg.InputText(default_text='Trial_0', key='file_name')],
             [sg.Text('How many trials for each stimuli?', font=('MS Sans Serif', 11)), sg.InputText(default_text='1')],
@@ -34,6 +35,7 @@ trial_layout = [[sg.Text('SSVEP simulation window', font=('MS Sans Serif', 15, '
             [sg.Text('Classification Method', font=('MS Sans Serif', 11)), sg.Combo(['CCA', 'CNN'], default_value='CCA', key='analysis')],
             [sg.Button('Start'), sg.Button('Cancel')] ]
 
+# The car navigation page for continuous flashing stimuli
 car_layout = [[sg.Text('Car Navigation Window', font=('MS Sans Serif', 15, 'bold'))],
             [sg.Text('Duration of Experiment (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='10')],
             [sg.Text('EEG signal length to be analyzed (seconds)?', font=('MS Sans Serif', 11)), sg.InputText(default_text='2')],
@@ -45,7 +47,7 @@ car_layout = [[sg.Text('Car Navigation Window', font=('MS Sans Serif', 15, 'bold
             [sg.Text('Classification Method', font=('MS Sans Serif', 11)), sg.Combo(['CCA'], default_value='CCA', key='analysis')],
             [sg.Button('Start'), sg.Button('Cancel')] ]
 
-# Create the Window
+# Create the Home page window
 window = sg.Window('CorticoChair', layout, size=(500, 250), return_keyboard_events=True)
 
 # Event Loop to process "events" and get the "values" of the inputs
@@ -53,15 +55,17 @@ while True:
     events, values = window.read()
     if events == sg.WIN_CLOSED or events == 'Cancel': # if user closes window or clicks cancel
         break
-
+    
+    # Activate sanity checking module
     if events == 'Sanity Check':
         sanity_check(explore)
-
+    
+    # Activate Impedance checking module
     if events == 'Check Impedance':
         explore.measure_imp()
 
+    # Connect Arduino system to the application
     if events == '-Arduino-':
-        
         if not arduino_flag:
             window['-Arduino-'].update(button_color =('white', 'green'))
             arduino_flag = True
@@ -69,6 +73,7 @@ while True:
             arduino_flag = False
             window['-Arduino-'].update(button_color =('white', 'red'))
 
+    # Display window for data collection 
     if events == 'trials':
         window_trial = sg.Window('Data Collection', trial_layout, size=(800, 300), return_keyboard_events=True)
         while True:
@@ -94,17 +99,16 @@ while True:
                 for freq_key in freq_keys:
                     fr_rates.append(round(refresh_rate/float(trial_values[freq_key])))
                 analysis_type = trial_values['analysis']
-                print('type:', analysis_type)
                 experiment = OnlineSSVEP(refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, trial_values['file_name'], arduino_flag)
-                # break
 
-                # # subscribe the experiment buffer to the EEG data stream
+                # subscribe the experiment buffer to the EEG data stream
                 explore.stream_processor.subscribe(callback=experiment.update_buffer, topic=TOPICS.raw_ExG)
                 explore.record_data(file_name=trial_values['file_name'], file_type='csv', do_overwrite=True)
                 start_time = time.time()
                 experiment.run_ssvep(ssvep_trials, start_rating, start_time)
                 explore.stop_recording()
     
+    # Display window for car navigation
     if events == 'car':
         window_car = sg.Window('Car Navigation', car_layout, size=(800, 300), return_keyboard_events=True)
         while True:
@@ -116,7 +120,6 @@ while True:
 
             # If the user clicks Start or uses the 'Enter' button on their keyboard
             if car_events == 'Start' or car_events == 'special 16777220':
-                print(car_values)
                 length = int(car_values[0])
                 signal_len = int(car_values[1])
                 eeg_s_rate = int(car_values[2])

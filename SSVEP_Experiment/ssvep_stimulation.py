@@ -32,14 +32,15 @@ def open_likert_window(title: str):
     likert_window.close()
     return fatigue_rating
 
-def butter_highpass(cutoff, fs, order=5):
+def butter_bandpass(low_cut, high_cut, fs, order=5):
     nyq = 0.5 * fs
-    normal_cutoff = cutoff / nyq
-    b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+    low = low_cut/nyq
+    high = high_cut/nyq
+    b, a = signal.butter(order, [low,high], btype='band', analog=False)
     return b, a
 
-def butter_highpass_filter(data, cutoff, fs, order=5):
-    b, a = butter_highpass(cutoff, fs, order=order)
+def butter_bandpass_filter(data, low_cut, high_cut, fs, order=5):
+    b, a = butter_bandpass(low_cut, high_cut, fs, order=order)
     y = signal.filtfilt(b, a, data)
     return y
 
@@ -51,7 +52,7 @@ def plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES):
   fig.tight_layout()
   filtered_y = np.empty((len(x), 8))
   for i in range(1,9):
-    filtered_y[:,i-1] = butter_highpass_filter(data.iloc[:,i], cutoff=1, fs=SAMPLE_RATE, order=5)
+    filtered_y[:,i-1] = butter_bandpass_filter(data.iloc[:,i], low_cut=1, high_cut=40, fs=SAMPLE_RATE, order=5)
 
     N = x.shape[0]
     xf = fftfreq(N, 1 / SAMPLE_RATE)
@@ -68,7 +69,7 @@ def plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES):
 
 
     axes[i-1, 2].set_title(f'filtered {EEG_CHANNEL_NAMES[i-1]} Spectrogram channel')
-    axes[i-1, 2].specgram(filtered_y[:,i-1], Fs=256)
+    axes[i-1, 2].specgram(filtered_y[:,i-1], Fs=SAMPLE_RATE)
     axes[i-1, 2].set_ylim(0,30)
   
   plt.title('Sanity Checking Results')
@@ -80,8 +81,8 @@ def sanity_check(explore):
   explore (explorepy.explore.Explore): explorepy device
   '''
   EEG_CHANNEL_NAMES = ['TimeStamps', 'Fp1', 'Fp2', 'PO3', 'PO4', 'O1', 'O2', 'OZ', 'POZ']
-  SAMPLE_RATE = 256
-  EEG_FILE_PATH = 'sanity_check_eeg'
+  SAMPLE_RATE = 250
+  EEG_FILE_PATH = 'sanity_check_eeg_eyes_closed'
 
   window = visual.Window([1920, 1080], monitor="testMonitor", fullscr=True, allowGUI=True, units='norm', color=[0.1,0.1,0.1])
   text_position = (0,0)
@@ -139,6 +140,7 @@ def sanity_check(explore):
   plot_filtered_eeg_data(data, SAMPLE_RATE, EEG_CHANNEL_NAMES)
 
 SCORE_TH = .1
+
 #  https://github.com/Mentalab-hub/explorepy/blob/master/examples/ssvep_demo/ssvep.py
 class Stimulus:
   """
@@ -215,7 +217,6 @@ class OnlineSSVEP:
     if self.arduino_flag:
       self._arduino = serial.Serial(port='COM7', baudrate=9600, timeout=.1)
 
-    
     # Analysis Type
     if analysis_type == 'CCA':
       self.analysis = CCAAnalysis(freqs=self._freqs, win_len=self.signal_len, s_rate=self.eeg_s_rate, n_harmonics=2)
@@ -381,8 +382,8 @@ class OnlineSSVEP:
 class CarDrive(OnlineSSVEP):
   def __init__(self, screen_refresh_rate, signal_len, eeg_s_rate, fr_rates, analysis_type, arduino_flag):
     self.window = visual.Window([1920, 1080], monitor="testMonitor", fullscr=True, allowGUI=True, units='norm', color=[0.1,0.1,0.1])
-    # self.target_positions = [(0, .6), (-.6, 0),(.6, 0), (0, -.6)]
-    self.target_positions = [(-.6, .6), (-.6, -.6),(.6, .6), (.6, -.6)]
+    self.target_positions = [(0, .6), (-.6, 0),(.6, 0), (0, -.6)]
+    # self.target_positions = [(-.6, .6), (-.6, -.6),(.6, .6), (.6, -.6)]
     self.target_arrows = ['\u2196', '\u2199', '\u2197', '\u2198']
     self.direction_labels = ['Top Left', 'Bottom Left', 'Top Right', 'Bottom Right']
     self.stim_size = (0.6 * self.window.size[1]/self.window.size[0], 0.6)
