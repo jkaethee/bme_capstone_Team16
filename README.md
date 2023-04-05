@@ -8,6 +8,8 @@ commands.
 
 This code repo will host files for SSVEP stimulation, EEG signal acquisiton, signal filtering, and signal classification.
 
+The code is built off of the work done here for SSVEP experiments: https://github.com/Mentalab-hub/explorepy/tree/master/examples/ssvep_demo
+
 ## Installation
 1. Follow the explorepy installation guide: https://explorepy.readthedocs.io/en/latest/installation.html
 2. Clone the repo
