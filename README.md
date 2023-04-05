@@ -17,6 +17,8 @@ https://github.com/Mentalab-hub/explorepy/tree/master/examples/ssvep_demo
 2. Clone the repo
 3. Run `python run_gui.py`
 
+<i> Note that it is best to install all the necessary packages in a virtual environment, personally I used Anaconda! </i>
+
 ## Electrode Placement and Mapping
 | **Label on Electrode** | **Actual Position** | **Channel #**  |
 |:-------------:|:-------------:|:-----:|
